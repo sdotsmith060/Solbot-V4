@@ -21,12 +21,14 @@ import {
 import { TradingControls } from './TradingControls'
 import { AdvancedTradingControls } from './AdvancedTradingControls'
 import { BackendFlowTradingControls } from './BackendFlowTradingControls'
+import { BackendTradingControls } from './BackendTradingControls'
 import { AdvancedSessionManager } from './AdvancedSessionManager'
 import { AdvancedWalletManager } from './AdvancedWalletManager'
 import { RealTimeMonitor } from './RealTimeMonitor'
 import { MetricsCards } from './MetricsCards'
 import { VolumeChart } from './VolumeChart'
 import { TransactionHistory } from './TransactionHistory'
+import { PerformanceMetrics } from './PerformanceMetrics'
 import { WalletManager } from './WalletManager'
 
 import { SessionManager } from './SessionManager'
@@ -247,15 +249,14 @@ export function Dashboard() {
             <div className="space-y-8">
               <MetricsCards />
               {isProductionMode ? (
-                <BackendFlowTradingControls
-                  isTrading={isTrading}
-                  onTradingChange={setIsTrading}
-                  onSessionChange={setCurrentSessionId}
-                  currentWallet={currentWallet}
-                  sessionData={sessionData}
-                  onWalletCreated={(wallet) => {
-                    setCurrentWallet(wallet)
-                    localStorage.setItem('currentWallet', JSON.stringify(wallet))
+                <BackendTradingControls
+                  sessionId={currentSessionId}
+                  onSessionUpdate={() => {
+                    // Refresh session data
+                    if (currentSessionId) {
+                      // Trigger refresh of other components
+                      setSessionData(null)
+                    }
                   }}
                 />
               ) : (
@@ -303,6 +304,7 @@ export function Dashboard() {
                     onSessionImport={(sessionId) => {
                       setCurrentSessionId(sessionId)
                       setActiveTab('trading')
+                      toast.success('Session imported! Switch to Trading tab to start.')
                     }}
                   />
 
@@ -342,23 +344,7 @@ export function Dashboard() {
             <div className="space-y-8">
               <div className="grid lg:grid-cols-2 gap-8">
                 <VolumeChart />
-                <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                  <h3 className="text-lg font-semibold text-white mb-4">Performance Metrics</h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Success Rate</span>
-                      <span className="text-green-400 font-semibold">98.5%</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Avg. Slippage</span>
-                      <span className="text-blue-400 font-semibold">2.1%</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Total Fees Paid</span>
-                      <span className="text-yellow-400 font-semibold">0.045 SOL</span>
-                    </div>
-                  </div>
-                </div>
+                <PerformanceMetrics />
               </div>
               <TransactionHistory />
             </div>

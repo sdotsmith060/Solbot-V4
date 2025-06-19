@@ -29,23 +29,41 @@ export function WalletManager({ sessionId }: WalletManagerProps) {
       return
     }
 
+    setLoading(true)
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:12001'
-      const response = await fetch(`${apiUrl}/api/sessions/${sessionId}/wallets`)
+      const response = await fetch(`${apiUrl}/api/wallets/${sessionId}`)
       
       if (!response.ok) {
-        throw new Error('Failed to fetch wallets')
+        const errorData = await response.json()
+        if (errorData.error?.includes('mock data')) {
+          toast.error('This session contains mock data. Please create a new session with real wallet keys.')
+          setWallets([])
+          return
+        }
+        throw new Error(errorData.error || 'Failed to fetch wallets')
       }
       
       const data = await response.json()
       
-      setWallets(data.map((wallet: any) => ({
-        ...wallet,
-        privateKeyVisible: false
-      })))
+      // Convert API response to wallet format
+      const allWallets = [
+        {
+          ...data.adminWallet,
+          type: 'admin',
+          privateKeyVisible: false
+        },
+        ...data.tradingWallets.map((wallet: any) => ({
+          ...wallet,
+          type: 'trading',
+          privateKeyVisible: false
+        }))
+      ]
+      
+      setWallets(allWallets)
     } catch (error) {
       console.error('Failed to load wallets:', error)
-      toast.error('Failed to load wallets')
+      toast.error('Failed to load wallets. Make sure the backend API server is running.')
       setWallets([])
     } finally {
       setLoading(false)
@@ -58,7 +76,36 @@ export function WalletManager({ sessionId }: WalletManagerProps) {
       return
     }
     
-    toast('Wallets are automatically created when you start a trading session', { icon: 'ℹ️' })
+    setIsCreating(true)
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:12001'
+      const response = await fetch(`${apiUrl}/api/wallets/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          count: 1
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create wallet')
+      }
+
+      const result = await response.json()
+      toast.success(`Created ${result.wallets.length} new wallet(s)`)
+      
+      // Refresh wallet list
+      await loadWallets()
+    } catch (error) {
+      console.error('Create wallet error:', error)
+      toast.error('Failed to create wallet')
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   const deleteWallet = (id: string) => {
@@ -83,21 +130,74 @@ export function WalletManager({ sessionId }: WalletManagerProps) {
       return
     }
 
+    if (!sessionId) {
+      toast.error('No active session')
+      return
+    }
+
     try {
-      // Simulate SOL distribution
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      const amountPerWallet = Number(distributionAmount) / wallets.length
-      setWallets(wallets.map(w => ({
-        ...w,
-        solBalance: w.solBalance + amountPerWallet,
-        isActive: true
-      })))
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:12001'
+      const response = await fetch(`${apiUrl}/api/wallets/distribute-sol`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          totalAmount: Number(distributionAmount)
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to distribute SOL')
+      }
+
+      const result = await response.json()
       
       setDistributionAmount('')
-      toast.success(`Distributed ${distributionAmount} SOL to ${wallets.length} wallets`)
+      toast.success(`Distributed ${distributionAmount} SOL to ${result.successCount} wallets`)
+      
+      // Refresh wallet balances
+      await loadWallets()
     } catch (error) {
+      console.error('Distribute SOL error:', error)
       toast.error('Failed to distribute SOL')
+    }
+  }
+
+  const collectSol = async () => {
+    if (!sessionId) {
+      toast.error('No active session')
+      return
+    }
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:12001'
+      const response = await fetch(`${apiUrl}/api/wallets/collect-sol`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to collect SOL')
+      }
+
+      const result = await response.json()
+      
+      toast.success(`Collected ${result.totalCollected.toFixed(4)} SOL from ${result.successCount} wallets`)
+      
+      // Refresh wallet balances
+      await loadWallets()
+    } catch (error) {
+      console.error('Collect SOL error:', error)
+      toast.error('Failed to collect SOL')
     }
   }
 
@@ -166,6 +266,13 @@ export function WalletManager({ sessionId }: WalletManagerProps) {
             <Send className="w-4 h-4" />
             <span>Distribute</span>
           </button>
+          <button
+            onClick={collectSol}
+            className="flex items-center space-x-2 px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors duration-200"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Collect All</span>
+          </button>
         </div>
         <p className="text-sm text-gray-400 mt-2">
           This will distribute SOL equally among all {wallets.length} wallets
@@ -215,7 +322,7 @@ export function WalletManager({ sessionId }: WalletManagerProps) {
                       <span className="text-gray-400 text-sm w-20">Private:</span>
                       <span className="text-white font-mono text-sm">
                         {wallet.privateKeyVisible ? 
-                          '5KJp9mNxQr7Lm24kPqHj9wXz3Nt82bYv6cMw8Hj95cMw...' : 
+                          wallet.privateKey : 
                           '••••••••••••••••••••••••••••••••••••••••••••••••'
                         }
                       </span>
@@ -225,6 +332,14 @@ export function WalletManager({ sessionId }: WalletManagerProps) {
                       >
                         {wallet.privateKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
+                      {wallet.privateKeyVisible && (
+                        <button
+                          onClick={() => copyToClipboard(wallet.privateKey)}
+                          className="text-gray-400 hover:text-white transition-colors duration-200"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -1,0 +1,17 @@
+{
+  "admin": {
+    "number": 0,
+    "address": "3Qw69tBJyUWog13kiFaNnexUree4Sqk7sC1vTDYMgmL3",
+    "privateKey": "3N3SvHpdhoH7eeNPZkNtMHDjcTQvSxw6mj8J6u9e2mFV3vy8wkKqB7CD8ue3ydzZ5SJAencQ2NTCL8GcYSGgiQJj"
+  },
+  "wallets": [
+    {
+      "number": 1,
+      "address": "FNoE7DvwwmqxEBxYqZ79MLYeJGrTT6hrq3iiQQuPyp2p",
+      "privateKey": "3hwxw8g8q1GCkVau9U3PmJMYSKEqFvnudjFMC95Ck4CoLx5k6etL4tvZQXURdw7Nb3G6MiGe44uhQKXoH9QxucEQ"
+    }
+  ],
+  "tokenAddress": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+  "tokenName": "BONK",
+  "timestamp": "2025-06-19T00:59:00.000Z"
+}
