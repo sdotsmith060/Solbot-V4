@@ -39,18 +39,44 @@ export function SessionManager({ onSessionImport }: SessionManagerProps) {
   const loadSessionFiles = async () => {
     setLoading(true)
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:12001'
-      const response = await fetch(`${apiUrl}/api/sessions/files`)
+      const apiUrl = 'https://work-2-deghialcmhllpyek.prod-runtime.all-hands.dev'
+      console.log('Environment API URL:', process.env.NEXT_PUBLIC_API_URL)
+      console.log('Final API URL:', apiUrl)
+      console.log('Loading sessions from:', `${apiUrl}/api/sessions`)
+      
+      alert('About to make API request to: ' + `${apiUrl}/api/sessions`)
+      
+      const response = await fetch(`${apiUrl}/api/sessions`)
+      console.log('Response status:', response.status)
+      console.log('Response headers:', response.headers)
       
       if (response.ok) {
-        const files = await response.json()
+        const sessions = await response.json()
+        console.log('Sessions loaded:', sessions)
+        
+        // Convert sessions to SessionFile format
+        const files = sessions.map((session: any) => ({
+          filename: `${session.id}_session.json`,
+          tokenName: session.tokenName,
+          lastModified: new Date(session.timestamp),
+          size: '2.4 KB', // Placeholder
+          walletCount: session.walletCount,
+          id: session.id,
+          tokenSymbol: session.tokenSymbol,
+          tokenAddress: session.tokenAddress,
+          status: session.status,
+          isTrading: session.isTrading
+        }))
         setSessionFiles(files)
+        toast.success(`Loaded ${files.length} sessions`)
       } else {
-        throw new Error('Failed to load session files')
+        const errorText = await response.text()
+        console.error('API Error:', response.status, errorText)
+        throw new Error(`Failed to load sessions: ${response.status} ${errorText}`)
       }
     } catch (error) {
       console.error('Load session files error:', error)
-      toast.error('Failed to load session files')
+      toast.error(`Failed to load sessions: ${error.message}`)
     } finally {
       setLoading(false)
     }
@@ -58,7 +84,7 @@ export function SessionManager({ onSessionImport }: SessionManagerProps) {
 
   const loadSessionDetails = async (filename: string) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:12001'
+      const apiUrl = 'https://work-2-deghialcmhllpyek.prod-runtime.all-hands.dev'
       const response = await fetch(`${apiUrl}/api/sessions/files/${filename}`)
       
       if (response.ok) {
@@ -77,7 +103,7 @@ export function SessionManager({ onSessionImport }: SessionManagerProps) {
   const importSession = async (filename: string) => {
     setIsImporting(filename)
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:12001'
+      const apiUrl = 'https://work-2-deghialcmhllpyek.prod-runtime.all-hands.dev'
       const response = await fetch(`${apiUrl}/api/sessions/import`, {
         method: 'POST',
         headers: {
